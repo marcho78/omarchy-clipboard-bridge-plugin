@@ -42,9 +42,9 @@ the Mac. Done.
 IPC:
 
 ```bash
-omarchy-shell ipc call clipboard-bridge status
-omarchy-shell ipc call clipboard-bridge pair      # forget the pairing and pair again
-omarchy-shell ipc call clipboard-bridge restart
+omarchy-shell clipboard-bridge status
+omarchy-shell clipboard-bridge pair      # forget the pairing and pair again
+omarchy-shell clipboard-bridge restart
 ```
 
 ## Remove

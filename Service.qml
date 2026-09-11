@@ -92,7 +92,7 @@ Item {
     }
   }
 
-  // `omarchy-shell ipc call clipboard-bridge status` / `pair`
+  // `omarchy-shell clipboard-bridge status` / `pair` / `restart`
   IpcHandler {
     target: "clipboard-bridge"
 
