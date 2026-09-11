@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "marcho78.clipboard-bridge",
   "name": "Clipboard Bridge",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "author": "marcho78",
   "license": "MIT",
   "description": "Shared clipboard with the macOS host when Omarchy runs in Parallels Desktop. Text and images both ways, paired with one click, no tokens to type.",

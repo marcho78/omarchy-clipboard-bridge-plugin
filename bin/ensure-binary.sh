@@ -9,10 +9,10 @@
 # executed as part of verification, and every tool is called by absolute path.
 set -euo pipefail
 
-VERSION="0.2.1"
+VERSION="0.2.2"
 declare -A SHA256=(
-  [aarch64]="43f3179e0d08536622d9f3cbe0fb531bc3dd4595c4db60ca2dd1f2528fe07075"
-  [x86_64]="1cfa33c62a294ca47e7e830535d0a83028b5bfe1efcd38e16ff15f12904c882f"
+  [aarch64]="48a020acb006cc08368eb744da55ddcfbb4def5cb7198a1b0036526dc6938afd"
+  [x86_64]="3ff86d464b188412bc7cf0d89e2e0750a8b29db7e036b3ecc46693c632b32a00"
 )
 REPO="marcho78/omarchy-clipboard-bridge"
 MAX_BYTES=16000000
