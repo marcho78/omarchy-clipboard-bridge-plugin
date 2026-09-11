@@ -26,7 +26,7 @@ Item {
   // 1. Refuse to double-run if the user installed the systemd service.
   Process {
     id: systemdProbe
-    command: ["systemctl", "--user", "is-active", "--quiet", "clipboard-bridge.service"]
+    command: ["/usr/bin/systemctl", "--user", "is-active", "--quiet", "clipboard-bridge.service"]
     running: true
     onExited: function(code) {
       root.managedBySystemd = (code === 0)
@@ -39,10 +39,11 @@ Item {
     }
   }
 
-  // 2. Locate or fetch the pinned release binary.
+  // 2. Obtain the pinned release binary. The script only ever prints a path
+  //    whose SHA-256 matches the digest pinned inside it.
   Process {
     id: ensureBinary
-    command: ["bash", root.pluginDir + "/bin/ensure-binary.sh"]
+    command: ["/usr/bin/bash", root.pluginDir + "/bin/ensure-binary.sh"]
     stdout: StdioCollector {
       onStreamFinished: root.binary = text.trim()
     }

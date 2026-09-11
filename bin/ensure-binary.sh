@@ -1,9 +1,12 @@
-#!/bin/bash
-# Locate or fetch the clipboard-bridge binary and print its path.
+#!/usr/bin/bash
+# Obtain the clipboard-bridge binary and print its path.
 #
-# Order: an installed binary of the pinned version on PATH or in /usr/bin,
-# then a previously fetched copy, then a fresh download of the pinned release
-# from GitHub verified against the SHA-256 below. Nothing is piped to a shell.
+# Trust model: the only thing this script trusts is the SHA-256 digest pinned
+# below for the exact release version. A cached copy is reused only if it is a
+# regular file owned by the current user, not writable by anyone else, and its
+# digest matches. Otherwise the release asset is downloaded over HTTPS with
+# timeouts and a size ceiling, verified, and installed atomically. Nothing is
+# executed as part of verification, and every tool is called by absolute path.
 set -euo pipefail
 
 VERSION="0.2.1"
@@ -12,29 +15,55 @@ declare -A SHA256=(
   [x86_64]="1cfa33c62a294ca47e7e830535d0a83028b5bfe1efcd38e16ff15f12904c882f"
 )
 REPO="marcho78/omarchy-clipboard-bridge"
+MAX_BYTES=16000000
 DEST_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/clipboard-bridge/bin"
 DEST="$DEST_DIR/clipboard-bridge"
 
-arch="$(uname -m)"
-[[ -n "${SHA256[$arch]:-}" ]] || { echo "unsupported architecture: $arch" >&2; exit 1; }
+fail() { printf 'ensure-binary: %s\n' "$*" >&2; exit 1; }
 
-is_pinned() { [[ -x "$1" ]] && [[ "$("$1" --version 2>/dev/null)" == "clipboard-bridge $VERSION" ]]; }
+arch="$(/usr/bin/uname -m)"
+expected="${SHA256[$arch]:-}"
+[[ -n "$expected" ]] || fail "unsupported architecture: $arch"
+uid="$(/usr/bin/id -u)"
 
-for candidate in /usr/bin/clipboard-bridge "$HOME/.local/bin/clipboard-bridge" "$DEST"; do
-  if is_pinned "$candidate"; then
-    echo "$candidate"
-    exit 0
-  fi
-done
+# True if $1 is a regular, non-symlink file owned by us, not group/world
+# writable, and its SHA-256 equals the pinned digest.
+verified() {
+  local f="$1" st owner mode sum
+  [[ -f "$f" && ! -L "$f" ]] || return 1
+  st="$(/usr/bin/stat -c '%u %a' "$f" 2>/dev/null)" || return 1
+  owner="${st%% *}"; mode="${st##* }"
+  [[ "$owner" == "$uid" ]] || return 1
+  (( (8#$mode & 8#022) == 0 )) || return 1
+  sum="$(/usr/bin/sha256sum "$f")"; sum="${sum%% *}"
+  [[ "$sum" == "$expected" ]]
+}
 
-mkdir -p "$DEST_DIR"
-tmp="$(mktemp "$DEST_DIR/.download.XXXXXX")"
-trap 'rm -f "$tmp"' EXIT
+if verified "$DEST"; then
+  printf '%s\n' "$DEST"
+  exit 0
+fi
+
+/usr/bin/mkdir -p "$DEST_DIR"
+[[ -d "$DEST_DIR" && ! -L "$DEST_DIR" ]] || fail "$DEST_DIR is not a directory"
+[[ "$(/usr/bin/stat -c '%u' "$DEST_DIR")" == "$uid" ]] || fail "$DEST_DIR is not owned by the current user"
+/usr/bin/chmod 700 "$DEST_DIR"
+
+tmp="$(/usr/bin/mktemp "$DEST_DIR/.download.XXXXXX")"
+trap '/usr/bin/rm -f "$tmp"' EXIT
 url="https://github.com/$REPO/releases/download/v$VERSION/clipboard-bridge-linux-$arch"
-echo "fetching $url" >&2
-curl -fsSL --retry 3 "$url" -o "$tmp"
-echo "${SHA256[$arch]}  $tmp" | sha256sum -c --quiet - || { echo "checksum mismatch for $url" >&2; exit 1; }
-chmod 755 "$tmp"
-mv -f "$tmp" "$DEST"
+printf 'fetching %s\n' "$url" >&2
+/usr/bin/curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --max-redirs 5 \
+  --connect-timeout 15 --max-time 120 --max-filesize "$MAX_BYTES" --retry 2 \
+  --output "$tmp" "$url" || fail "download failed"
+
+size="$(/usr/bin/stat -c '%s' "$tmp")"
+(( size > 0 && size <= MAX_BYTES )) || fail "unexpected download size: $size bytes"
+sum="$(/usr/bin/sha256sum "$tmp")"; sum="${sum%% *}"
+[[ "$sum" == "$expected" ]] || fail "checksum mismatch for $url (got $sum)"
+
+/usr/bin/chmod 755 "$tmp"
+/usr/bin/mv -f "$tmp" "$DEST"
 trap - EXIT
-echo "$DEST"
+verified "$DEST" || fail "installed binary failed verification"
+printf '%s\n' "$DEST"

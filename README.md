@@ -39,10 +39,13 @@ the Mac. Done.
 
 ## What the plugin does
 
-* On enable, it looks for the `clipboard-bridge` binary. If a matching version
-  is not already installed (`/usr/bin` or `~/.local/bin`), it downloads the
-  pinned release from GitHub into `~/.local/share/clipboard-bridge/bin/` and
-  verifies its SHA-256 before running it. Nothing is piped to a shell.
+* On enable, it obtains the `clipboard-bridge` binary: a cached copy in
+  `~/.local/share/clipboard-bridge/bin/` is reused only if it is owned by you,
+  not writable by others, and its SHA-256 matches the digest pinned in
+  `bin/ensure-binary.sh`. Otherwise that exact release is downloaded over HTTPS
+  with timeouts and a size limit, verified against the same digest, and
+  installed atomically. Nothing is executed as part of verification and nothing
+  is piped to a shell. All tools are invoked by absolute path.
 * It then runs `clipboard-bridge connect` as a child of omarchy-shell and
   restarts it with backoff if it exits.
 * If you already run the daemon through `systemd --user`, the plugin notices
