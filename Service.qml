@@ -35,8 +35,18 @@ Item {
                  + "Run `clipboard-bridge uninstall` to let the plugin manage it.")
         return
       }
-      ensureBinary.running = true
+      reapOrphans.running = true
     }
+  }
+
+  // 1b. If omarchy-shell was restarted, the daemon it spawned earlier may still
+  //     be running as an orphan and holding the single-instance lock. It is not
+  //     systemd-managed (checked above), so it can only be ours: end it before
+  //     starting a fresh one.
+  Process {
+    id: reapOrphans
+    command: ["/usr/bin/pkill", "-f", "clipboard-bridge connect$"]
+    onExited: ensureBinary.running = true
   }
 
   // 2. Obtain the pinned release binary. The script only ever prints a path
