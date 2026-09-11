@@ -17,11 +17,21 @@ In the VM:
 omarchy plugin add https://github.com/marcho78/omarchy-clipboard-bridge-plugin.git --enable
 ```
 
-On the Mac, open Terminal and run:
+On the Mac, download the host binary for your CPU from the
+[clipboard-bridge releases page](https://github.com/marcho78/omarchy-clipboard-bridge/releases/latest)
+(`clipboard-bridge-macos-arm64` for Apple silicon, `clipboard-bridge-macos-x86_64`
+for Intel), then in Terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/marcho78/omarchy-clipboard-bridge/main/host/install.sh | bash
+chmod +x ~/Downloads/clipboard-bridge-macos-arm64
+mkdir -p ~/.local/bin && mv ~/Downloads/clipboard-bridge-macos-arm64 ~/.local/bin/clipboard-bridge
+~/.local/bin/clipboard-bridge install
 ```
+
+Checksums are in `SHA256SUMS` on the same release page. If macOS asks whether
+`clipboard-bridge` may accept incoming connections, click Allow. Other host
+install options are described in the
+[clipboard-bridge README](https://github.com/marcho78/omarchy-clipboard-bridge#2-on-the-mac).
 
 Within a few seconds a dialog appears on the Mac with a four-digit pairing
 code, and a notification in Omarchy shows the same code. Click **Allow** on
