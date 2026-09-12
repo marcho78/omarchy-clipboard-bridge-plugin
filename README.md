@@ -11,11 +11,20 @@ enabled.
 
 ## Install
 
-In the VM:
+In the VM, build and install the daemon as a package, then add the plugin:
 
 ```bash
+git clone https://github.com/marcho78/omarchy-clipboard-bridge.git
+cd omarchy-clipboard-bridge/packaging/aur && makepkg -si
 omarchy plugin add https://github.com/marcho78/omarchy-clipboard-bridge-plugin.git --enable
 ```
+
+The PKGBUILD fetches the tagged source of
+[marcho78/omarchy-clipboard-bridge](https://github.com/marcho78/omarchy-clipboard-bridge),
+verifies its SHA-256, and compiles it on your machine (a small Rust program,
+a couple of minutes; needs `cargo`). The plugin itself never downloads,
+verifies or installs anything; it only runs `/usr/bin/clipboard-bridge` if
+the package is present.
 
 On the Mac, download the host binary for your CPU from the
 [clipboard-bridge releases page](https://github.com/marcho78/omarchy-clipboard-bridge/releases/latest)
@@ -39,18 +48,22 @@ the Mac. Done.
 
 ## What the plugin does
 
-* On enable, it obtains the `clipboard-bridge` binary: a cached copy in
-  `~/.local/share/clipboard-bridge/bin/` is reused only if it is owned by you,
-  not writable by others, and its SHA-256 matches the digest pinned in
-  `bin/ensure-binary.sh`. Otherwise that exact release is downloaded over HTTPS
-  with timeouts and a size limit, verified against the same digest, and
-  installed atomically. Nothing is executed as part of verification and nothing
-  is piped to a shell. All tools are invoked by absolute path.
-* It then runs `clipboard-bridge connect` as a child of omarchy-shell and
-  restarts it with backoff if it exits.
-* If you already run the daemon through `systemd --user`, the plugin notices
-  and stays out of the way.
+* On enable, it checks that `/usr/bin/clipboard-bridge` exists. If not, it
+  logs a one-line hint to install the package and checks again every minute.
+* It runs `clipboard-bridge connect` as a child of omarchy-shell and restarts
+  it with backoff if it exits. Its stderr is read in chunks against a byte
+  budget; a flood restarts the daemon instead of reaching the shell.
+* The daemon it starts is recorded by pid and kernel start time in
+  `$XDG_RUNTIME_DIR`. After a shell restart, the previous daemon is ended only
+  if that exact pid still has the recorded start time and command name; no
+  process is ever matched by command-line pattern.
+* If you already run the daemon through `systemd --user`
+  (`systemctl --user enable --now clipboard-bridge`, the unit ships with the
+  package), the plugin notices and stays out of the way.
 * Disabling or removing the plugin stops the daemon.
+
+Everything runs by absolute path: `/usr/bin/clipboard-bridge`,
+`/usr/bin/systemctl`, `/usr/bin/test`, `/usr/bin/kill`. No shell is involved.
 
 IPC:
 
@@ -64,23 +77,17 @@ omarchy-shell clipboard-bridge restart
 
 ```bash
 omarchy plugin remove marcho78.clipboard-bridge
+sudo pacman -R clipboard-bridge  # optional: the daemon itself
 ```
 
-To also delete the downloaded binary and pairing secrets:
-
-```bash
-rm -rf ~/.local/share/clipboard-bridge ~/.config/clipboard-bridge
-```
+To also delete the pairing secrets: `rm -rf ~/.config/clipboard-bridge`.
 
 On the Mac: `clipboard-bridge uninstall --purge` and delete `~/.local/bin/clipboard-bridge`.
 
 ## Dependencies
 
-* `wl-clipboard` (ships with Omarchy)
-* `curl`, `sha256sum` (coreutils), `notify-send` for the pairing notification
-* The `clipboard-bridge` binary from
-  [marcho78/omarchy-clipboard-bridge](https://github.com/marcho78/omarchy-clipboard-bridge)
-  (MIT), fetched by version and checksum.
+* The `clipboard-bridge` package built from `packaging/aur` in its repo (MIT), which depends on `wl-clipboard`
+  (ships with Omarchy) and uses `notify-send` for the pairing notification.
 
 ## License
 
